@@ -5,7 +5,7 @@ name: 'user_dimension_etl'
 version: '1.0.0'
 config-version: 2
 
-profile: 'snowflake'
+profile: 'user_dimension'
 
 model-paths: ["models"]
 analysis-paths: ["analyses"]

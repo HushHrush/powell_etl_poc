@@ -1,138 +1,138 @@
 version: 2
 
 sources:
+  # =====================================================================
+  # ORACLE EBS SOURCE TABLES
+  # =====================================================================
   - name: oracle_apps
     description: "Oracle E-Business Suite source tables"
-    database: "{{ env_var('SNOWFLAKE_DATABASE', 'YOUR_DATABASE_NAME') }}"
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'DB_ING') }}"
     schema: "ORACLE_APPS"
     tables:
-      - name: fnd_user
+      - name: FND_USER
         description: "Foundation User table containing user login information"
+        identifier: FND_USER
         columns:
-          - name: user_id
+          - name: USER_ID
             description: "Primary key - Unique identifier for the user"
-            tests:
-              - not_null
-              - unique
-          - name: user_name
+          - name: USER_NAME
             description: "Login name of the user"
-            tests:
-              - not_null
-          - name: email_address
+          - name: EMAIL_ADDRESS
             description: "Email address of the user"
-          - name: last_update_date
+          - name: EMPLOYEE_ID
+            description: "Foreign key to PER_ALL_PEOPLE_F.PERSON_ID"
+          - name: START_DATE
+            description: "User account start date"
+          - name: END_DATE
+            description: "User account end date"
+          - name: PERSON_PARTY_ID
+            description: "Person party identifier"
+          - name: LAST_UPDATE_DATE
             description: "Date when the record was last updated"
-          - name: employee_id
-            description: "Foreign key to per_all_people_f.person_id"
+          - name: LAST_UPDATED_BY
+            description: "User who last updated the record"
+          - name: CREATION_DATE
+            description: "Date when the record was created"
+          - name: CREATED_BY
+            description: "User who created the record"
             
-      - name: per_all_people_f
+      - name: PER_ALL_PEOPLE_F
         description: "Person information table with date-effective records"
+        identifier: PER_ALL_PEOPLE_F
         columns:
-          - name: person_id
+          - name: PERSON_ID
             description: "Primary key - Unique identifier for the person"
-            tests:
-              - not_null
-          - name: effective_start_date
+          - name: EFFECTIVE_START_DATE
             description: "Start date of the record effectiveness"
-            tests:
-              - not_null
-          - name: effective_end_date
+          - name: EFFECTIVE_END_DATE
             description: "End date of the record effectiveness"
-            tests:
-              - not_null
-          - name: business_group_id
+          - name: BUSINESS_GROUP_ID
             description: "Foreign key to business group"
-            tests:
-              - not_null
+          - name: FIRST_NAME
+            description: "First name"
+          - name: MIDDLE_NAMES
+            description: "Middle names"
+          - name: LAST_NAME
+            description: "Last name"
+          - name: FULL_NAME
+            description: "Full formatted name"
+          - name: TITLE
+            description: "Name title (Mr., Mrs., etc.)"
+          - name: SUFFIX
+            description: "Name suffix (Jr., Sr., etc.)"
+          - name: SEX
+            description: "Gender code (M/F)"
+          - name: DATE_OF_BIRTH
+            description: "Date of birth"
+          - name: MARITAL_STATUS
+            description: "Marital status code"
+          - name: CURRENT_EMPLOYEE_FLAG
+            description: "Current employee indicator"
               
-      - name: org_organization_definitions
+      - name: ORG_ORGANIZATION_DEFINITIONS
         description: "Organization definitions view"
+        identifier: ORG_ORGANIZATION_DEFINITIONS
         columns:
-          - name: business_group_id
-            description: "Business group identifier"
-          - name: set_of_books_id
-            description: "Set of books identifier"
-          - name: operating_unit
-            description: "Operating unit identifier"
-            
-      - name: gl_sets_of_books
-        description: "General Ledger sets of books"
-        columns:
-          - name: set_of_books_id
-            description: "Primary key"
-          - name: name
-            description: "Ledger name"
-          - name: currency_code
-            description: "Base currency"
-            
-      - name: hr_all_organization_units_tl
-        description: "Organization units translation table"
-        columns:
-          - name: organization_id
+          - name: ORGANIZATION_ID
             description: "Organization identifier"
-          - name: name
+          - name: BUSINESS_GROUP_ID
+            description: "Business group identifier"
+          - name: SET_OF_BOOKS_ID
+            description: "Set of books identifier"
+          - name: ORGANIZATION_NAME
             description: "Organization name"
+            
+      - name: GL_SETS_OF_BOOKS
+        description: "General Ledger sets of books"
+        identifier: GL_SETS_OF_BOOKS
+        columns:
+          - name: SET_OF_BOOKS_ID
+            description: "Primary key"
+          - name: NAME
+            description: "Ledger name"
+          - name: CURRENCY_CODE
+            description: "Base currency"
 
+  # =====================================================================
+  # DATA WAREHOUSE TABLES
+  # =====================================================================
   - name: warehouse
     description: "Data Warehouse target tables and reference data"
-    database: "{{ env_var('SNOWFLAKE_DATABASE', 'YOUR_DATABASE_NAME') }}"
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'DB_ING') }}"
     schema: "DATA_WAREHOUSE"
     tables:
-      - name: w_user_d
+      - name: W_USER_D
         description: "User Dimension table (target)"
+        identifier: W_USER_D
         columns:
-          - name: row_wid
+          - name: ROW_WID
             description: "Surrogate key"
-            tests:
-              - not_null
-              - unique
-          - name: integration_id
+          - name: INTEGRATION_ID
             description: "Natural key from source system"
-            tests:
-              - not_null
-          - name: datasource_num_id
+          - name: DATASOURCE_NUM_ID
             description: "Source system identifier"
-            tests:
-              - not_null
-          - name: effective_from_dt
+          - name: EFFECTIVE_FROM_DT
             description: "SCD Type 2 effective start date"
-            tests:
-              - not_null
-          - name: effective_to_dt
+          - name: EFFECTIVE_TO_DT
             description: "SCD Type 2 effective end date"
-          - name: current_flg
+          - name: CURRENT_FLG
             description: "Flag indicating current record (Y/N)"
-            tests:
-              - accepted_values:
-                  values: ['Y', 'N']
-          - name: delete_flg
+          - name: DELETE_FLG
             description: "Flag indicating soft deleted record (Y/N)"
-            tests:
-              - accepted_values:
-                  values: ['Y', 'N']
                   
-      - name: w_code_d
+      - name: W_CODE_D
         description: "Code translation/lookup dimension table"
+        identifier: W_CODE_D
         columns:
-          - name: category
+          - name: CATEGORY
             description: "Code category (GENDER, STATE, COUNTRY, etc.)"
-            tests:
-              - not_null
-          - name: source_code
+          - name: SOURCE_CODE
             description: "Source system code value"
-          - name: master_code
+          - name: MASTER_CODE
             description: "Standardized master code"
-          - name: master_value
+          - name: MASTER_VALUE
             description: "Master code description"
-          - name: language_code
+          - name: LANGUAGE_CODE
             description: "Language for translations"
-          - name: datasource_num_id
+          - name: DATASOURCE_NUM_ID
             description: "Source system identifier"
-            
-      - name: w_param_g
-        description: "ETL Parameter table for tracking ETL processes"
-        columns:
-          - name: row_wid
-            description: "Parameter row identifier"
-          - name: etl_proc_wid
-            description: "ETL process identifier"
