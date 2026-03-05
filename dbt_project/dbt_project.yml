@@ -1,0 +1,50 @@
+# DBT Project Configuration
+# Converted from Informatica PowerCenter User Dimension ETL
+
+name: 'user_dimension_etl'
+version: '1.0.0'
+config-version: 2
+
+profile: 'snowflake'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Variables equivalent to Informatica mapping parameters
+vars:
+  datasource_num_id: 1
+  language_code: 'E'
+  last_extract_date: '1900-01-01 00:00:00'
+  default_eff_from_date: '1899-01-01'
+  default_eff_to_date: '4712-12-31'
+
+# =====================================================================
+# MODEL CONFIGURATIONS - Informatica Mappings
+# =====================================================================
+models:
+  user_dimension_etl:
+    mappings:
+      +schema: DATA_WAREHOUSE
+      
+      # SDE (Source Data Extract) - m_SDE_ORA_UserDimension
+      m_SDE_ORA_UserDimension:
+        +materialized: table
+        +tags: ['SDE', 'UserDimension', 'Extract']
+      
+      # SIL (Staging to Integration Layer) - m_SIL_UserDimension
+      m_SIL_UserDimension:
+        +materialized: incremental
+        +tags: ['SIL', 'UserDimension', 'Load']
+      
+      # SIL SCD Update - m_SIL_UserDimension_Update
+      m_SIL_UserDimension_Update:
+        +materialized: incremental
+        +tags: ['SIL', 'UserDimension', 'SCD_Update']

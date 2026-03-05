@@ -1,0 +1,218 @@
+version: 2
+
+models:
+  # =====================================================================
+  # MAPPING: m_SDE_ORA_UserDimension
+  # =====================================================================
+  - name: m_SDE_ORA_UserDimension
+    description: |
+      **Informatica Mapping:** m_SDE_ORA_UserDimension
+      **Workflow:** WF_SDE_ORA_UserDimension
+      **Original XML:** SDE_ORA_UserDimension.xml
+      
+      Extracts user data from Oracle EBS source tables (FND_USER, PER_ALL_PEOPLE_F)
+      and loads into staging table W_USER_DS.
+      
+      **Source Tables:**
+      - ORACLE_APPS.FND_USER - User account information
+      - ORACLE_APPS.PER_ALL_PEOPLE_F - Person details (date effective)
+      - ORACLE_APPS.ORG_ORGANIZATION_DEFINITIONS - Business group info
+      - ORACLE_APPS.GL_SETS_OF_BOOKS - Ledger information
+      
+      **Target Table:**
+      - DATA_WAREHOUSE.W_USER_DS - User Dimension Staging
+      
+      **Transformations (Informatica to dbt):**
+      | Informatica | dbt Equivalent |
+      |-------------|----------------|
+      | SQ_FND_USER | CTE: SQ_FND_USER |
+      | SQ_PER_ALL_PEOPLE_F | CTE: SQ_PER_ALL_PEOPLE_F |
+      | FIL_CURRENT_PERSON | CTE: FIL_CURRENT_PERSON (WHERE clause) |
+      | JNR_USER_PERSON | CTE: JNR_USER_PERSON (LEFT JOIN) |
+      | LKP_ORG_DEFINITIONS | CTE: LKP_ORG_DEFINITIONS (LEFT JOIN) |
+      | EXP_TRANSFORM | CTE: EXP_TRANSFORM (CASE statements) |
+    
+    config:
+      tags: ['SDE', 'UserDimension', 'Extract']
+    
+    columns:
+      - name: INTEGRATION_ID
+        description: "Natural key derived from USER_ID"
+        tests:
+          - not_null
+          - unique
+      - name: USER_ID
+        description: "Oracle FND_USER.USER_ID"
+        tests:
+          - not_null
+      - name: USER_NAME
+        description: "User login name from FND_USER"
+      - name: FIRST_NAME
+        description: "First name from PER_ALL_PEOPLE_F"
+      - name: MID_NAME
+        description: "Middle name from PER_ALL_PEOPLE_F"
+      - name: LAST_NAME
+        description: "Last name from PER_ALL_PEOPLE_F"
+      - name: FULL_NAME
+        description: "Full formatted name"
+      - name: SEX_MF_CODE
+        description: "Gender code (M/F)"
+      - name: ACTIVE_FLG
+        description: "Active flag derived from USER_END_DATE"
+        tests:
+          - accepted_values:
+              values: ['Y', 'N']
+      - name: EMP_FLG
+        description: "Employee flag derived from EMPLOYEE_ID"
+        tests:
+          - accepted_values:
+              values: ['Y', 'N']
+      - name: DATASOURCE_NUM_ID
+        description: "Source system identifier"
+        tests:
+          - not_null
+
+  # =====================================================================
+  # MAPPING: m_SIL_UserDimension
+  # =====================================================================
+  - name: m_SIL_UserDimension
+    description: |
+      **Informatica Mapping:** m_SIL_UserDimension
+      **Workflow:** WF_SIL_UserDimension
+      **Original XML:** SIL_UserDimension.xml
+      
+      Loads staging data into User Dimension (W_USER_D) with code lookups 
+      and SCD Type 2 change detection.
+      
+      **Source Table:**
+      - DATA_WAREHOUSE.W_USER_DS - From m_SDE_ORA_UserDimension
+      
+      **Lookup Tables:**
+      - DATA_WAREHOUSE.W_CODE_D - Code translations (GENDER, STATE, COUNTRY, MARITAL_STATUS)
+      
+      **Target Table:**
+      - DATA_WAREHOUSE.W_USER_D - User Dimension (SCD Type 2)
+      
+      **Transformations (Informatica to dbt):**
+      | Informatica | dbt Equivalent |
+      |-------------|----------------|
+      | SQ_USER_STAGING | CTE: SQ_USER_STAGING |
+      | LKP_GENDER | CTE: LKP_GENDER (LEFT JOIN to W_CODE_D) |
+      | LKP_COUNTRY | CTE: LKP_COUNTRY (LEFT JOIN to W_CODE_D) |
+      | LKP_STATE | CTE: LKP_STATE (LEFT JOIN to W_CODE_D) |
+      | LKP_MARITAL_STATUS | CTE: LKP_MARITAL_STATUS (LEFT JOIN to W_CODE_D) |
+      | LKP_EXISTING_RECORD | CTE: LKP_EXISTING_RECORD (LEFT JOIN to {{ this }}) |
+      | EXP_SCD_LOGIC | CTE: EXP_SCD_LOGIC (CASE for INSERT/UPDATE/NOCHANGE) |
+      | RTR_INSERT_UPDATE | CTE: RTR_INSERT (WHERE SCD_ACTION IN (...)) |
+      | SEQ_W_USER_D_WID | dbt_utils.generate_surrogate_key() |
+    
+    config:
+      tags: ['SIL', 'UserDimension', 'Load']
+    
+    columns:
+      - name: ROW_WID
+        description: "Surrogate key (equivalent to SEQ_W_USER_D_WID)"
+        tests:
+          - not_null
+          - unique
+      - name: INTEGRATION_ID
+        description: "Natural key from source"
+        tests:
+          - not_null
+      - name: LOGIN
+        description: "User login name"
+      - name: FIRST_NAME
+        description: "First name"
+      - name: LAST_NAME
+        description: "Last name"
+      - name: SEX_MF_CODE
+        description: "Gender code"
+      - name: SEX_MF_NAME
+        description: "Gender description from lookup"
+      - name: MARITAL_STATUS_CODE
+        description: "Marital status code"
+      - name: MARITAL_STATUS_NAME
+        description: "Marital status description from lookup"
+      - name: STATE_CODE
+        description: "State/Province code"
+      - name: STATE_NAME
+        description: "State/Province name from lookup"
+      - name: COUNTRY_CODE
+        description: "Country code"
+      - name: COUNTRY_NAME
+        description: "Country name from lookup"
+      - name: CURRENT_FLG
+        description: "SCD Type 2 current record indicator"
+        tests:
+          - accepted_values:
+              values: ['Y', 'N']
+      - name: DELETE_FLG
+        description: "Soft delete flag"
+        tests:
+          - accepted_values:
+              values: ['Y', 'N']
+      - name: EFFECTIVE_FROM_DT
+        description: "SCD Type 2 effective start date"
+        tests:
+          - not_null
+      - name: EFFECTIVE_TO_DT
+        description: "SCD Type 2 effective end date"
+        tests:
+          - not_null
+      - name: DATASOURCE_NUM_ID
+        description: "Source system identifier"
+        tests:
+          - not_null
+
+  # =====================================================================
+  # MAPPING: m_SIL_UserDimension_Update
+  # =====================================================================
+  - name: m_SIL_UserDimension_Update
+    description: |
+      **Informatica Mapping:** m_SIL_UserDimension_Update
+      **Workflow:** WF_SIL_UserDimension_Update
+      **Original XML:** SIL_UserDimension_SCDUpdate.xml
+      
+      SCD Type 2 update processing - closes previous records when new 
+      versions are inserted by m_SIL_UserDimension.
+      
+      This mapping:
+      1. Identifies records with new versions inserted today
+      2. Finds the previous CURRENT_FLG='Y' record for same INTEGRATION_ID
+      3. Updates old record: CURRENT_FLG='N', EFFECTIVE_TO_DT=(new_date - 1)
+      
+      **Source Table:**
+      - DATA_WAREHOUSE.W_USER_D - Newly inserted records
+      
+      **Target Table:**
+      - DATA_WAREHOUSE.W_USER_D - Update existing records (via post_hook)
+      
+      **Transformations (Informatica to dbt):**
+      | Informatica | dbt Equivalent |
+      |-------------|----------------|
+      | SQ_NEW_RECORDS | CTE: SQ_NEW_RECORDS |
+      | LKP_OLD_RECORD | CTE: LKP_OLD_RECORD (INNER JOIN) |
+      | FIL_NEEDS_UPDATE | CTE: FIL_NEEDS_UPDATE |
+      | EXP_UPDATE_COLS | CTE: EXP_UPDATE_COLS |
+      | UPD_CLOSE_RECORD | config.post_hook (UPDATE statement) |
+    
+    config:
+      tags: ['SIL', 'UserDimension', 'SCD_Update']
+    
+    columns:
+      - name: OLD_ROW_WID
+        description: "ROW_WID of the record being closed"
+        tests:
+          - not_null
+      - name: NEW_ROW_WID
+        description: "ROW_WID of the new current record"
+        tests:
+          - not_null
+      - name: INTEGRATION_ID
+        description: "Natural key identifying the user"
+        tests:
+          - not_null
+      - name: NEW_EFFECTIVE_TO_DT
+        description: "New EFFECTIVE_TO_DT for the old record"
+      - name: UPDATE_ACTION
+        description: "Action performed (CLOSE_OLD_RECORD)"

@@ -1,0 +1,138 @@
+version: 2
+
+sources:
+  - name: oracle_apps
+    description: "Oracle E-Business Suite source tables"
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'YOUR_DATABASE_NAME') }}"
+    schema: "ORACLE_APPS"
+    tables:
+      - name: fnd_user
+        description: "Foundation User table containing user login information"
+        columns:
+          - name: user_id
+            description: "Primary key - Unique identifier for the user"
+            tests:
+              - not_null
+              - unique
+          - name: user_name
+            description: "Login name of the user"
+            tests:
+              - not_null
+          - name: email_address
+            description: "Email address of the user"
+          - name: last_update_date
+            description: "Date when the record was last updated"
+          - name: employee_id
+            description: "Foreign key to per_all_people_f.person_id"
+            
+      - name: per_all_people_f
+        description: "Person information table with date-effective records"
+        columns:
+          - name: person_id
+            description: "Primary key - Unique identifier for the person"
+            tests:
+              - not_null
+          - name: effective_start_date
+            description: "Start date of the record effectiveness"
+            tests:
+              - not_null
+          - name: effective_end_date
+            description: "End date of the record effectiveness"
+            tests:
+              - not_null
+          - name: business_group_id
+            description: "Foreign key to business group"
+            tests:
+              - not_null
+              
+      - name: org_organization_definitions
+        description: "Organization definitions view"
+        columns:
+          - name: business_group_id
+            description: "Business group identifier"
+          - name: set_of_books_id
+            description: "Set of books identifier"
+          - name: operating_unit
+            description: "Operating unit identifier"
+            
+      - name: gl_sets_of_books
+        description: "General Ledger sets of books"
+        columns:
+          - name: set_of_books_id
+            description: "Primary key"
+          - name: name
+            description: "Ledger name"
+          - name: currency_code
+            description: "Base currency"
+            
+      - name: hr_all_organization_units_tl
+        description: "Organization units translation table"
+        columns:
+          - name: organization_id
+            description: "Organization identifier"
+          - name: name
+            description: "Organization name"
+
+  - name: warehouse
+    description: "Data Warehouse target tables and reference data"
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'YOUR_DATABASE_NAME') }}"
+    schema: "DATA_WAREHOUSE"
+    tables:
+      - name: w_user_d
+        description: "User Dimension table (target)"
+        columns:
+          - name: row_wid
+            description: "Surrogate key"
+            tests:
+              - not_null
+              - unique
+          - name: integration_id
+            description: "Natural key from source system"
+            tests:
+              - not_null
+          - name: datasource_num_id
+            description: "Source system identifier"
+            tests:
+              - not_null
+          - name: effective_from_dt
+            description: "SCD Type 2 effective start date"
+            tests:
+              - not_null
+          - name: effective_to_dt
+            description: "SCD Type 2 effective end date"
+          - name: current_flg
+            description: "Flag indicating current record (Y/N)"
+            tests:
+              - accepted_values:
+                  values: ['Y', 'N']
+          - name: delete_flg
+            description: "Flag indicating soft deleted record (Y/N)"
+            tests:
+              - accepted_values:
+                  values: ['Y', 'N']
+                  
+      - name: w_code_d
+        description: "Code translation/lookup dimension table"
+        columns:
+          - name: category
+            description: "Code category (GENDER, STATE, COUNTRY, etc.)"
+            tests:
+              - not_null
+          - name: source_code
+            description: "Source system code value"
+          - name: master_code
+            description: "Standardized master code"
+          - name: master_value
+            description: "Master code description"
+          - name: language_code
+            description: "Language for translations"
+          - name: datasource_num_id
+            description: "Source system identifier"
+            
+      - name: w_param_g
+        description: "ETL Parameter table for tracking ETL processes"
+        columns:
+          - name: row_wid
+            description: "Parameter row identifier"
+          - name: etl_proc_wid
+            description: "ETL process identifier"
